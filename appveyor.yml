@@ -2,18 +2,12 @@
 
 # Test against these versions of Node.js.
 environment:
-  # Visual Studio Version
-  MSVS_VERSION: 2013
   # Test against these versions of Node.js and io.js
   matrix:
     # node.js
-    - nodejs_version: "0.10"
-    - nodejs_version: "0.12"
-    # io.js
-    - nodejs_version: "4"
-    - nodejs_version: "5"
     - nodejs_version: "6"
-    - nodejs_version: "7"
+    - nodejs_version: "8"
+    - nodejs_version: "9"
 
 platform:
   - x86
@@ -21,11 +15,12 @@ platform:
 
 # Install scripts. (runs after repo cloning)
 install:
-  - ps: Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version)
-  - npm install -g npm@3
-  - set PATH=%APPDATA%\npm;%PATH%
-  # Typical npm stuff.
-  - npm install --msvs_version=%MSVS_VERSION%
+  - python -V
+  - set PYTHON=python
+  - ps: Install-Product node $env:nodejs_version $env:platform
+  - node -p process.arch
+  - node -p process.version
+  - npm install
 
 # Post-install test scripts.
 test_script:

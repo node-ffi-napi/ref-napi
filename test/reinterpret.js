@@ -1,57 +1,57 @@
+'use strict';
+const assert = require('assert');
+const ref = require('../');
+const weak = require('weak-napi');
 
-var assert = require('assert')
-var weak = require('weak')
-var ref = require('../')
+describe('reinterpret()', function() {
+  beforeEach(gc);
 
-describe('reinterpret()', function () {
-
-  beforeEach(gc)
-
-  it('should return a new Buffer instance at the same address', function () {
-    var buf = new Buffer('hello world')
-    var small = buf.slice(0, 0)
-    assert.strictEqual(0, small.length)
-    assert.strictEqual(buf.address(), small.address())
-    var reinterpreted = small.reinterpret(buf.length)
-    assert.strictEqual(buf.address(), reinterpreted.address())
-    assert.strictEqual(buf.length, reinterpreted.length)
-    assert.strictEqual(buf.toString(), reinterpreted.toString())
+  it('should return a new Buffer instance at the same address', function() {
+    const buf = Buffer.from('hello world');
+    const small = buf.slice(0, 0);
+    assert.strictEqual(0, small.length);
+    assert.strictEqual(buf.address(), small.address());
+    const reinterpreted = small.reinterpret(buf.length);
+    assert.strictEqual(buf.address(), reinterpreted.address());
+    assert.strictEqual(buf.length, reinterpreted.length);
+    assert.strictEqual(buf.toString(), reinterpreted.toString());
   })
-  
-  it('should return a new Buffer instance starting at the offset address', function () {
-    var buf = new Buffer('hello world')
-    var offset = 3
-    var small = buf.slice(offset, buf.length)
-    assert.strictEqual(buf.length - offset, small.length)
-    assert.strictEqual(buf.address() + offset, small.address())
-    var reinterpreted = buf.reinterpret(small.length, offset)
-    assert.strictEqual(small.address(), reinterpreted.address())
-    assert.strictEqual(small.length, reinterpreted.length)
-    assert.strictEqual(small.toString(), reinterpreted.toString())
-  })  
 
-  it('should retain a reference to the original Buffer when reinterpreted', function () {
-    var origGCd = false
-    var otherGCd = false
-    var buf = new Buffer(1)
-    weak(buf, function () { origGCd = true })
-    var other = buf.reinterpret(0)
-    weak(other, function () { otherGCd = true })
+  it('should return a new Buffer instance starting at the offset address', function() {
+    const buf = Buffer.from('hello world');
+    const offset = 3;
+    const small = buf.slice(offset, buf.length);
+    assert.strictEqual(buf.length - offset, small.length);
+    assert.strictEqual(buf.address() + offset, small.address());
+    const reinterpreted = buf.reinterpret(small.length, offset);
+    assert.strictEqual(small.address(), reinterpreted.address());
+    assert.strictEqual(small.length, reinterpreted.length);
+    assert.strictEqual(small.toString(), reinterpreted.toString());
+  })
 
-    assert(!origGCd, '"buf" has been garbage collected too soon')
-    assert(!otherGCd, '"other" has been garbage collected too soon')
+  it('should retain a reference to the original Buffer when reinterpreted', function() {
+    let origGCd = false;
+    let otherGCd = false;
+    let buf = Buffer.alloc(1);
+    weak(buf, () => { origGCd = true; });
+    let other = buf.reinterpret(0);
+    weak(other, () => { otherGCd = true; });
+
+    assert(!origGCd, '"buf" has been garbage collected too soon');
+    assert(!otherGCd, '"other" has been garbage collected too soon');
 
     // try to GC `buf`
-    buf = null
-    gc()
-    assert(!origGCd, '"buf" has been garbage collected too soon')
-    assert(!otherGCd, '"other" has been garbage collected too soon')
+    buf = null;
+    gc();
+    assert(!origGCd, '"buf" has been garbage collected too soon');
+    assert(!otherGCd, '"other" has been garbage collected too soon');
 
     // now GC `other`
-    other = null
-    gc()
-    assert(otherGCd, '"other" has not been garbage collected')
-    assert(origGCd, '"buf" has not been garbage collected')
-  })
-
-})
+    other = null;
+    gc();
+    setImmediate(() => {
+      assert(otherGCd, '"other" has not been garbage collected');
+      assert(origGCd, '"buf" has not been garbage collected');
+    });
+  });
+});
