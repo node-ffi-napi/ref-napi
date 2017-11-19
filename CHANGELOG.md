@@ -1,3 +1,14 @@
+1.4.0 / 2017-11-19
+==================
+
+* [[`0cd2129acf`](https://github.com/node-ffi-napi/ref/commit/0cd2129acf)] - Update information to new repository (Anna Henningsen)
+* [[`27171b2a96`](https://github.com/node-ffi-napi/ref/commit/27171b2a96)] - 🎉 Port code to N-API (Anna Henningsen)
+* [[`d23f403ab2`](https://github.com/node-ffi-napi/ref/commit/d23f403ab2)] - Add missing LICENSE file to match package.json (Anna Henningsen)
+* [[`9523598530`](https://github.com/node-ffi-napi/ref/commit/9523598530)] - Add Code of Conduct (Anna Henningsen)
+* [[`f0790af04d`](https://github.com/node-ffi-napi/ref/commit/f0790af04d)] - Refactor tests to ES6 (Anna Henningsen)
+* [[`924437f94b`](https://github.com/node-ffi-napi/ref/commit/924437f94b)] - fix `readPointer()` docs (#90) (John Cupitt)
+* [[`1029203b46`](https://github.com/node-ffi-napi/ref/commit/1029203b46)] - don't fail in Node.js "6.0.0 && \< 6.9.1" (#89) (btsimonh)
+* [[`4903350866`](https://github.com/node-ffi-napi/ref/commit/4903350866)] - Update docs about ref.address() being unsafe on 64-bit platforms (#88) (Yaacov Tarko)
 
 1.3.5 / 2017-01-27
 ==================

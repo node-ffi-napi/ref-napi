@@ -1,7 +1,9 @@
 {
   "name": "ref",
   "description": "Turn Buffer instances into \"pointers\"",
-  "engine": ">= 6.0",
+  "engines": {
+    "node": ">= 6.0"
+  },
   "keywords": [
     "native",
     "buffer",
