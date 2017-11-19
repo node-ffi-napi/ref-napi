@@ -1,5 +1,5 @@
-ref
-===
+ref-napi
+========
 ### Turn Buffer instances into "pointers"
 
 [![NPM Version](https://img.shields.io/npm/v/ref-napi.svg?style=flat)](https://npmjs.org/package/ref-napi)
