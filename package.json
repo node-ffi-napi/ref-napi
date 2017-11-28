@@ -39,9 +39,9 @@
     "node-addon-api": "^1.1.0"
   },
   "devDependencies": {
-    "dox": "0.0.4",
-    "highlight.js": "1",
-    "jade": "^0.35.0",
+    "dox": "0.9.0",
+    "highlight.js": "^9.12.0",
+    "jade": "^1.11.0",
     "marked": "^0.3.2",
     "mocha": "^4.0.1",
     "nyc": "^11.3.0",
