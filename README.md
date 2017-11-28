@@ -2,6 +2,8 @@ ref-napi
 ========
 ### Turn Buffer instances into "pointers"
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/node-ffi-napi/ref-napi.svg)](https://greenkeeper.io/)
+
 [![NPM Version](https://img.shields.io/npm/v/ref-napi.svg?style=flat)](https://npmjs.org/package/ref-napi)
 [![NPM Downloads](https://img.shields.io/npm/dm/ref-napi.svg?style=flat)](https://npmjs.org/package/ref-napi)
 [![Build Status](https://travis-ci.org/node-ffi-napi/ref-napi.svg?style=flat&branch=latest)](https://travis-ci.org/node-ffi-napi/ref-napi?branch=latest)
