@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('assert');
 const ref = require('../');
-const weak = require('weak-napi');
+let weak; try { weak = require('weak-napi'); } catch (e) {}
 
 describe('reinterpret()', function() {
   beforeEach(gc);
@@ -30,6 +30,8 @@ describe('reinterpret()', function() {
   })
 
   it('should retain a reference to the original Buffer when reinterpreted', function() {
+    if (weak === undefined)
+      return this.skip('weak not avaialbe');
     let origGCd = false;
     let otherGCd = false;
     let buf = Buffer.alloc(1);

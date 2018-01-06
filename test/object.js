@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('assert');
 const ref = require('../');
-const weak = require('weak-napi');
+let weak; try { weak = require('weak-napi'); } catch (e) {}
 
 describe('Object', function() {
   const obj = {
@@ -21,6 +21,8 @@ describe('Object', function() {
   })
 
   it('should retain references to written Objects', function (done) {
+    if (weak === undefined)
+      return this.skip('weak not avaialbe');
     let o_gc = false;
     let buf_gc = false;
     let o = { foo: 'bar' };

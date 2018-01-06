@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('assert');
 const ref = require('../');
-const weak = require('weak-napi');
+let weak; try { weak = require('weak-napi'); } catch (e) {}
 
 describe('pointer', function() {
   const test = Buffer.from('hello world');
@@ -20,6 +20,8 @@ describe('pointer', function() {
   });
 
   it('should retain references to a written pointer in a Buffer', function (done) {
+    if (weak === undefined)
+      return this.skip('weak not avaialbe');
     let child_gc = false;
     let parent_gc = false;
     let child = Buffer.from('a pointer holding some data...');
