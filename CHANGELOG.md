@@ -1,3 +1,22 @@
+1.4.1 / 2019-01-07
+==================
+
+* [[`f1827f3bdd`](https://github.com/node-ffi-napi/ref-napi/commit/f1827f3bdd)] - Update node-addon-api dependency to ^1.6.2 (Anna Henningsen)
+* [[`bf16e880fb`](https://github.com/node-ffi-napi/ref-napi/commit/bf16e880fb)] - chore(package): update marked to version 0.6.0 (#11) (greenkeeper[bot])
+* [[`bb92877339`](https://github.com/node-ffi-napi/ref-napi/commit/bb92877339)] - ***Revert*** "Update debug to 4.0.0" (Anna Henningsen)
+* [[`6fa4022605`](https://github.com/node-ffi-napi/ref-napi/commit/6fa4022605)] - Update debug to 4.0.0 (Anna Henningsen)
+* [[`3c98424bee`](https://github.com/node-ffi-napi/ref-napi/commit/3c98424bee)] - chore(package): update marked to version 0.5.0 (#7) (greenkeeper[bot])
+* [[`c9523cd587`](https://github.com/node-ffi-napi/ref-napi/commit/c9523cd587)] - chore(package): update nyc to version 12.0.1 (#6) (greenkeeper[bot])
+* [[`3f3f1b8efa`](https://github.com/node-ffi-napi/ref-napi/commit/3f3f1b8efa)] - chore(package): update marked to version 0.4.0 (#5) (greenkeeper[bot])
+* [[`1c2a878c7a`](https://github.com/node-ffi-napi/ref-napi/commit/1c2a878c7a)] - chore(package): update mocha to version 5.0.0 (#2) (greenkeeper[bot])
+* [[`0b35b34000`](https://github.com/node-ffi-napi/ref-napi/commit/0b35b34000)] - Explicitly test Node v4 (Anna Henningsen)
+* [[`74bbaa4cb6`](https://github.com/node-ffi-napi/ref-napi/commit/74bbaa4cb6)] - docs(readme): add Greenkeeper badge (greenkeeper[bot])
+* [[`bba04d75ce`](https://github.com/node-ffi-napi/ref-napi/commit/bba04d75ce)] - chore(package): update dependencies (greenkeeper[bot])
+* [[`0a77d1edde`](https://github.com/node-ffi-napi/ref-napi/commit/0a77d1edde)] - Bump node-addon-api to ^1.1.0 (Anna Henningsen)
+* [[`b8bac0aea0`](https://github.com/node-ffi-napi/ref-napi/commit/b8bac0aea0)] - Use full package name in README heading (Anna Henningsen)
+* [[`31bd8454a7`](https://github.com/node-ffi-napi/ref-napi/commit/31bd8454a7)] - Use matching branch name for badges in README.md (Anna Henningsen)
+* [[`46b0db449b`](https://github.com/node-ffi-napi/ref-napi/commit/46b0db449b)] - fix up package name in package.json (Anna Henningsen)
+
 1.4.0 / 2017-11-19
 ==================
 
