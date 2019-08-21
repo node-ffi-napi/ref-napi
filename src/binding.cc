@@ -292,7 +292,7 @@ Value ReadUInt64(const CallbackInfo& args) {
 
   if (val > JS_MAX_INT) {
     char strbuf[128];
-    snprintf(strbuf, 128, "%" PRId64, val);
+    snprintf(strbuf, 128, "%" PRIu64, val);
     return String::New(env, strbuf);
   } else {
     return Number::New(env, val);
