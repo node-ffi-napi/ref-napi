@@ -1,3 +1,8 @@
+1.4.2 / 2019-01-07
+==================
+
+* [[`ed19a20370`](https://github.com/node-ffi-napi/ref-napi/commit/ed19a20370)] - Fix readUInt64 so that it returns positive numbers when high order bit is set (Paul Elder) [#20](https://github.com/node-ffi-napi/ref-napi/pull/20)
+
 1.4.1 / 2019-01-07
 ==================
 
