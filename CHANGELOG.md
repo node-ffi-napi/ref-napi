@@ -1,3 +1,10 @@
+1.4.3 / 2020-01-16
+==================
+
+* [[`33d46e71db`](https://github.com/node-ffi-napi/ref-napi/commit/33d46e71db)] - Update to jquery-3.4.1.min.js (Alan Ayoub) [#23](https://github.com/node-ffi-napi/ref-napi/pull/23)
+* [[`4b8f542c16`](https://github.com/node-ffi-napi/ref-napi/commit/4b8f542c16)] - **chore**: update marked to version 0.7.0 (greenkeeper[bot]) [#17](https://github.com/node-ffi-napi/ref-napi/pull/17)
+* [[`7137ebcfa1`](https://github.com/node-ffi-napi/ref-napi/commit/7137ebcfa1)] - **chore**: update node-addon-api to version 2.0.0 (greenkeeper[bot]) [#21](https://github.com/node-ffi-napi/ref-napi/pull/21)
+
 1.4.2 / 2019-01-07
 ==================
 
