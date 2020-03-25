@@ -5,9 +5,10 @@ environment:
   # Test against these versions of Node.js and io.js
   matrix:
     # node.js
-    - nodejs_version: "6"
     - nodejs_version: "8"
     - nodejs_version: "9"
+    - nodejs_version: "10"
+    - nodejs_version: "12"
 
 platform:
   - x86
@@ -35,3 +36,7 @@ build: off
 
 # Set build version format here instead of in the admin panel.
 version: "{build}"
+
+deploy_script:
+  - IF "%APPVEYOR_REPO_TAG%" == "true" (npm run upload-windows)
+  - IF NOT "%APPVEYOR_REPO_TAG%" == "true" (echo 'Not tagged, skipping deploy')

@@ -2,6 +2,8 @@ sudo: false
 
 env:
   - CXX=g++-4.9
+  - CXX=clang++
+
 addons:
   apt:
     sources:
@@ -11,12 +13,37 @@ addons:
 
 language: node_js
 
+os:
+  - linux
+  - osx
+
+osx_image: xcode10
+
 node_js:
-  - "4"
-  - "6"
   - "8"
   - "9"
+  - "10"
+  - "12"
+
+jobs:
+  exclude:
+      - os: osx
+        env: CXX=g++-4.9
+      - os: linux
+        env: CXX=clang++
+
+install:
+  - npm install --build-from-source
 
 after_success:
   - npm install coveralls
   - nyc report --reporter=text-lcov | ./node_modules/.bin/coveralls
+
+deploy:
+  provider: script
+  script:
+    - npm run upload-posix
+  skip_cleanup: true
+  on:
+    tags: true
+    repo: node-ffi-napi/ref-napi
