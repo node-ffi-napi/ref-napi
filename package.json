@@ -50,6 +50,6 @@
     "nyc": "^15.0.0",
     "prebuildify": "^3.0.4",
     "prebuildify-ci": "^1.0.5",
-    "weak-napi": "1"
+    "weak-napi": "^2.0.0"
   }
 }
