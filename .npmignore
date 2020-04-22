@@ -11,11 +11,11 @@ pids
 logs
 results
 
-node_modules
-npm-debug.log
 .nyc_output/
 coverage
 build
 node-addon-api
 
-prebuilds/
+core
+vgcore.*
+
