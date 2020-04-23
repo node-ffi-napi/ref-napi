@@ -566,6 +566,12 @@ Object Init(Env env, Object exports) {
     if (status != napi_ok) {
       delete data;
       data = nullptr;
+    } else {
+      // Hack around the fact that we can't reset buffer_from from the
+      // InstanceData dtor.
+      buffer_from.As<Object>().AddFinalizer([](Env env, InstanceData* data) {
+        data->buffer_from.Reset();
+      }, data);
     }
   }
   exports["instance"] = External<RefNapi::Instance>::New(env, data);
