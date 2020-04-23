@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <unordered_map>
 
-#include "napi.h"
+#include "ref-napi.h"
 
 #ifdef _WIN32
   #define __alignof__ __alignof
@@ -12,7 +13,9 @@
   #define PRId64 "lld"
   #define PRIu64 "llu"
 #else
-  #define __STDC_FORMAT_MACROS
+  #ifndef __STDC_FORMAT_MACROS
+    #define __STDC_FORMAT_MACROS
+  #endif
   #include <inttypes.h>
 #endif
 
@@ -20,6 +23,33 @@
 using namespace Napi;
 
 namespace {
+
+napi_status napix_set_instance_data(
+    napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint) {
+  typedef napi_status (*napi_set_instance_data_fn)(
+      napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint);
+  static const napi_set_instance_data_fn napi_set_instance_data__ =
+      (napi_set_instance_data_fn)
+          get_symbol_from_current_process("napi_set_instance_data");
+
+  if (napi_set_instance_data__ == nullptr)
+    return napi_generic_failure;
+  return napi_set_instance_data__(env, data, finalize_cb, finalize_hint);
+}
+
+napi_status napix_get_instance_data(
+    napi_env env, void** data) {
+  typedef napi_status (*napi_get_instance_data_fn)(
+      napi_env env, void** data);
+  static const napi_get_instance_data_fn napi_get_instance_data__ =
+      (napi_get_instance_data_fn)
+          get_symbol_from_current_process("napi_get_instance_data");
+
+  *data = nullptr;
+  if (napi_get_instance_data__ == nullptr)
+    return napi_generic_failure;
+  return napi_get_instance_data__(env, data);
+}
 
 // used by the Int64 functions to determine whether to return a Number
 // or String based on whether or not a Number will lose precision.
@@ -29,7 +59,113 @@ namespace {
 
 // mirrors deps/v8/src/objects.h.
 // we could use `node::Buffer::kMaxLength`, but it's not defined on node v0.6.x
-static const unsigned int kMaxLength = 0x3fffffff;
+static const size_t kMaxLength = 0x3fffffff;
+
+// Since Node.js v14.0.0, we have to keep a global list of all ArrayBuffer
+// instances that we work with, in order not to create any duplicates.
+// Luckily, N-API instance data is available on v14.x and above.
+class InstanceData final : public RefNapi::Instance {
+ public:
+  InstanceData(Env env) : env(env) {}
+
+  struct ArrayBufferEntry {
+    Reference<ArrayBuffer> ab;
+    size_t finalizer_count;
+  };
+
+  Env env;
+  std::unordered_map<char*, ArrayBufferEntry> pointer_to_orig_buffer;
+  FunctionReference buffer_from;
+
+  void RegisterArrayBuffer(napi_value val) override {
+    ArrayBuffer buf(env, val);
+    char* ptr = static_cast<char*>(buf.Data());
+    if (ptr == nullptr) return;
+
+    auto it = pointer_to_orig_buffer.find(ptr);
+    if (it != pointer_to_orig_buffer.end()) {
+      if (!it->second.ab.Value().IsEmpty()) {
+        // Already have a valid entry, nothing to do.
+        return;
+      }
+      it->second.ab.Reset(buf, 0);
+      it->second.finalizer_count++;
+    } else {
+      pointer_to_orig_buffer.emplace(ptr, ArrayBufferEntry {
+        Reference<ArrayBuffer>::New(buf, 0),
+        1
+      });
+    }
+
+    buf.AddFinalizer([this](Env env, char* ptr) {
+      auto it = pointer_to_orig_buffer.find(ptr);
+      if (--it->second.finalizer_count == 0)
+        pointer_to_orig_buffer.erase(it);
+    }, ptr);
+  }
+
+  inline ArrayBuffer LookupOrCreateArrayBuffer(char* ptr, size_t length) {
+    assert(ptr != nullptr);
+    ArrayBuffer ab;
+    auto it = pointer_to_orig_buffer.find(ptr);
+    if (it != pointer_to_orig_buffer.end())
+      ab = it->second.ab.Value();
+
+    if (ab.IsEmpty()) {
+      length = std::max<size_t>(length, kMaxLength);
+      ab = Buffer<char>::New(env, ptr, length, [](Env,char*){})
+          .ArrayBuffer();
+      RegisterArrayBuffer(ab);
+    }
+    return ab;
+  }
+
+  napi_value WrapPointer(char* ptr, size_t length) override;
+  char* GetBufferData(napi_value val) override;
+
+  static InstanceData* Get(Env env) {
+    void* d = nullptr;
+    if (napix_get_instance_data(env, &d) == napi_ok)
+      return static_cast<InstanceData*>(d);
+    return nullptr;
+  }
+};
+
+/**
+ * Converts an arbitrary pointer to a node Buffer with specified length
+ */
+
+Value WrapPointer(Env env, char* ptr, size_t length) {
+  if (ptr == nullptr)
+    length = 0;
+
+  InstanceData* data;
+  if (ptr != nullptr && (data = InstanceData::Get(env)) != nullptr) {
+    ArrayBuffer ab = data->LookupOrCreateArrayBuffer(ptr, length);
+    assert(!ab.IsEmpty());
+    return data->buffer_from.Call({
+      ab, Number::New(env, 0), Number::New(env, length)
+    });
+  }
+
+  return Buffer<char>::New(env, ptr, length, [](Env,char*){});
+}
+
+char* GetBufferData(Value val) {
+  Buffer<char> buf = val.As<Buffer<char>>();
+  InstanceData* data = InstanceData::Get(val.Env());
+  if (data != nullptr)
+    data->RegisterArrayBuffer(buf.ArrayBuffer());
+  return buf.Data();
+}
+
+napi_value InstanceData::WrapPointer(char* ptr, size_t length) {
+  return ::WrapPointer(env, ptr, length);
+}
+
+char* InstanceData::GetBufferData(napi_value val) {
+  return ::GetBufferData(Value(env, val));
+}
 
 char* AddressForArgs(const CallbackInfo& args, size_t offset_index = 1) {
   Value buf = args[0];
@@ -38,7 +174,7 @@ char* AddressForArgs(const CallbackInfo& args, size_t offset_index = 1) {
   }
 
   int64_t offset = args[offset_index].ToNumber();
-  return buf.As<Buffer<char>>().Data() + offset;
+  return GetBufferData(buf) + offset;
 }
 
 /**
@@ -94,16 +230,6 @@ Value HexAddress(const CallbackInfo& args) {
 Value IsNull(const CallbackInfo& args) {
   char* ptr = AddressForArgs(args);
   return Boolean::New(args.Env(), ptr == nullptr);
-}
-
-/**
- * Converts an arbitrary pointer to a node Buffer with specified length
- */
-
-Value WrapPointer(Env env, char* ptr, size_t length) {
-  if (ptr == nullptr)
-    length = 0;
-  return Buffer<char>::New(env, ptr, length, [](Env,char*){});
 }
 
 /**
@@ -199,7 +325,7 @@ void WritePointer(const CallbackInfo& args) {
   if (input.IsNull()) {
     *reinterpret_cast<char**>(ptr) = nullptr;
   } else {
-    char* input_ptr = input.As<Buffer<char>>().Data();
+    char* input_ptr = GetBufferData(input);
     *reinterpret_cast<char**>(ptr) = input_ptr;
   }
 }
@@ -427,6 +553,29 @@ Value ReinterpretBufferUntilZeros(const CallbackInfo& args) {
 } // anonymous namespace
 
 Object Init(Env env, Object exports) {
+  InstanceData* data = new InstanceData(env);
+  {
+    Value buffer_ctor = env.Global()["Buffer"];
+    Value buffer_from = buffer_ctor.As<Object>()["from"];
+    data->buffer_from.Reset(buffer_from.As<Function>(), 1);
+    assert(!data->buffer_from.IsEmpty());
+    napi_status status = napix_set_instance_data(
+        env, data, [](napi_env env, void* data, void* hint) {
+          delete static_cast<InstanceData*>(data);
+        }, nullptr);
+    if (status != napi_ok) {
+      delete data;
+      data = nullptr;
+    } else {
+      // Hack around the fact that we can't reset buffer_from from the
+      // InstanceData dtor.
+      buffer_from.As<Object>().AddFinalizer([](Env env, InstanceData* data) {
+        data->buffer_from.Reset();
+      }, data);
+    }
+  }
+  exports["instance"] = External<RefNapi::Instance>::New(env, data);
+
   // "sizeof" map
   Object smap = Object::New(env);
   // fixed sizes

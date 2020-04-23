@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "debug": "^3.1.0",
+    "get-symbol-from-current-process-h": "^1.0.2",
     "node-addon-api": "^2.0.0",
     "node-gyp-build": "^4.2.1"
   },
