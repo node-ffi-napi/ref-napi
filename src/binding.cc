@@ -24,7 +24,32 @@ using namespace Napi;
 
 namespace {
 
-DEFINE_NAPIX_INSTANCE_DATA_ACCESSORS
+napi_status napix_set_instance_data(
+    napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint) {
+  typedef napi_status (*napi_set_instance_data_fn)(
+      napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint);
+  static const napi_set_instance_data_fn napi_set_instance_data__ =
+      (napi_set_instance_data_fn)
+          get_symbol_from_current_process("napi_set_instance_data");
+
+  if (napi_set_instance_data__ == nullptr)
+    return napi_generic_failure;
+  return napi_set_instance_data__(env, data, finalize_cb, finalize_hint);
+}
+
+napi_status napix_get_instance_data(
+    napi_env env, void** data) {
+  typedef napi_status (*napi_get_instance_data_fn)(
+      napi_env env, void** data);
+  static const napi_get_instance_data_fn napi_get_instance_data__ =
+      (napi_get_instance_data_fn)
+          get_symbol_from_current_process("napi_get_instance_data");
+
+  *data = nullptr;
+  if (napi_get_instance_data__ == nullptr)
+    return napi_generic_failure;
+  return napi_get_instance_data__(env, data);
+}
 
 // used by the Int64 functions to determine whether to return a Number
 // or String based on whether or not a Number will lose precision.
@@ -100,10 +125,8 @@ class InstanceData final : public RefNapi::Instance {
 
   static InstanceData* Get(Env env) {
     void* d = nullptr;
-    if (napix_get_instance_data != nullptr &&
-        napix_get_instance_data(env, &d) == napi_ok) {
+    if (napix_get_instance_data(env, &d) == napi_ok)
       return static_cast<InstanceData*>(d);
-    }
     return nullptr;
   }
 };
@@ -530,9 +553,8 @@ Value ReinterpretBufferUntilZeros(const CallbackInfo& args) {
 } // anonymous namespace
 
 Object Init(Env env, Object exports) {
-  InstanceData* data = nullptr;
-  if (napix_set_instance_data != nullptr) {
-    data = new InstanceData(env);
+  InstanceData* data = new InstanceData(env);
+  {
     Value buffer_ctor = env.Global()["Buffer"];
     Value buffer_from = buffer_ctor.As<Object>()["from"];
     data->buffer_from.Reset(buffer_from.As<Function>(), 1);
