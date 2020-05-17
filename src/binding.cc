@@ -61,6 +61,11 @@ napi_status napix_get_instance_data(
 // we could use `node::Buffer::kMaxLength`, but it's not defined on node v0.6.x
 static const size_t kMaxLength = 0x3fffffff;
 
+enum ArrayBufferMode {
+  AB_CREATED_BY_REF,
+  AB_PASSED_TO_REF
+};
+
 // Since Node.js v14.0.0, we have to keep a global list of all ArrayBuffer
 // instances that we work with, in order not to create any duplicates.
 // Luckily, N-API instance data is available on v14.x and above.
@@ -79,6 +84,10 @@ class InstanceData final : public RefNapi::Instance {
 
   void RegisterArrayBuffer(napi_value val) override {
     ArrayBuffer buf(env, val);
+    RegisterArrayBuffer(buf, AB_PASSED_TO_REF);
+  }
+
+  inline void RegisterArrayBuffer(ArrayBuffer buf, ArrayBufferMode mode) {
     char* ptr = static_cast<char*>(buf.Data());
     if (ptr == nullptr) return;
 
@@ -97,11 +106,19 @@ class InstanceData final : public RefNapi::Instance {
       });
     }
 
-    buf.AddFinalizer([this](Env env, char* ptr) {
-      auto it = pointer_to_orig_buffer.find(ptr);
-      if (--it->second.finalizer_count == 0)
-        pointer_to_orig_buffer.erase(it);
-    }, ptr);
+    // If AB_CREATED_BY_REF, then another finalizer has been added before this
+    // as a "real" backing store finalizer.
+    if (mode != AB_CREATED_BY_REF) {
+      buf.AddFinalizer([this](Env env, char* ptr) {
+        UnregisterArrayBuffer(ptr);
+      }, ptr);
+    }
+  }
+
+  inline void UnregisterArrayBuffer(char* ptr) {
+    auto it = pointer_to_orig_buffer.find(ptr);
+    if (--it->second.finalizer_count == 0)
+      pointer_to_orig_buffer.erase(it);
   }
 
   inline ArrayBuffer LookupOrCreateArrayBuffer(char* ptr, size_t length) {
@@ -113,9 +130,10 @@ class InstanceData final : public RefNapi::Instance {
 
     if (ab.IsEmpty()) {
       length = std::max<size_t>(length, kMaxLength);
-      ab = Buffer<char>::New(env, ptr, length, [](Env,char*){})
-          .ArrayBuffer();
-      RegisterArrayBuffer(ab);
+      ab = Buffer<char>::New(env, ptr, length, [this](Env env, char* ptr) {
+        UnregisterArrayBuffer(ptr);
+      }).ArrayBuffer();
+      RegisterArrayBuffer(ab, AB_CREATED_BY_REF);
     }
     return ab;
   }
