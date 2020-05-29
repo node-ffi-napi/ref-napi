@@ -33,8 +33,8 @@
     "docs": "node docs/compile",
     "test": "nyc mocha --expose-gc",
     "install": "node-gyp-build",
-    "prebuild": "prebuildify --napi",
-    "prepack": "prebuildify-ci download && ([ $(ls prebuilds | wc -l) = '4' ] || (echo 'Some prebuilds are missing'; exit 1))"
+    "prebuild": "prebuildify --napi --tag-armv",
+    "prepack": "prebuildify-ci download && ([ $(ls prebuilds | wc -l) = '5' ] || (echo 'Some prebuilds are missing'; exit 1))"
   },
   "dependencies": {
     "debug": "^4.1.1",
