@@ -44,11 +44,15 @@ describe('Object', function() {
     buf = null;
     gc();
     setImmediate(() => {
-      assert(buf_gc, '"buf" has not been garbage collected');
-      gc();
       setImmediate(() => {
-        assert(o_gc, '"o" has not been garbage collected');
-        done();
+        assert(buf_gc, '"buf" has not been garbage collected');
+        gc();
+        setImmediate(() => {
+          setImmediate(() => {
+            assert(o_gc, '"o" has not been garbage collected');
+            done();
+          });
+        });
       });
     });
   });
