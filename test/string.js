@@ -31,6 +31,20 @@ describe('C string', function() {
       }
       assert.strictEqual(0, buf[str.length]);
     });
+
+    it('should not write the terminating 0 out of bounds', function() {
+      const wholebuf = Buffer.alloc(20, 127);
+      const buf = wholebuf.subarray(0, 10);
+      const str = 'hello world';
+      buf.writeCString(str);
+      for (let i = 0; i < buf.length - 1; i++) {
+        assert.strictEqual(str.charCodeAt(i), buf[i]);
+      }
+      assert.strictEqual(0, buf[buf.length - 1]);
+      for (let i = buf.length; i < wholebuf.length; i++) {
+        assert.strictEqual(127, wholebuf[i]);
+      }
+    });
   });
 
   describe('allocCString()', function() {
