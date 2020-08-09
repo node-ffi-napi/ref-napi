@@ -24,6 +24,7 @@ using namespace Napi;
 
 namespace {
 
+#if !defined(NAPI_VERSION) || NAPI_VERSION < 6
 napi_status napix_set_instance_data(
     napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint) {
   typedef napi_status (*napi_set_instance_data_fn)(
@@ -50,6 +51,17 @@ napi_status napix_get_instance_data(
     return napi_generic_failure;
   return napi_get_instance_data__(env, data);
 }
+#else // NAPI_VERSION >= 6
+napi_status napix_set_instance_data(
+    napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint) {
+  return napi_set_instance_data(env, data, finalize_cb, finalize_hint);
+}
+
+napi_status napix_get_instance_data(
+    napi_env env, void** data) {
+  return napi_get_instance_data(env, data);
+}
+#endif
 
 // used by the Int64 functions to determine whether to return a Number
 // or String based on whether or not a Number will lose precision.
