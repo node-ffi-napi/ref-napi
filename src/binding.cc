@@ -679,7 +679,7 @@ Object Init(Env env, Object exports) {
   exports["readObject"] = Function::New(env, ReadObject);
   exports["writeObject"] = Function::New(env, WriteObject);
   exports["readPointer"] = Function::New(env, ReadPointer);
-  exports["writePointer"] = Function::New(env, WritePointer);
+  exports["_writePointer"] = Function::New(env, WritePointer);
   exports["readInt64"] = Function::New(env, ReadInt64);
   exports["writeInt64"] = Function::New(env, WriteInt64);
   exports["readUInt64"] = Function::New(env, ReadUInt64);
