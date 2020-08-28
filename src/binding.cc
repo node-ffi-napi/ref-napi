@@ -677,7 +677,7 @@ Object Init(Env env, Object exports) {
   exports["hexAddress"] = Function::New(env, HexAddress);
   exports["isNull"] = Function::New(env, IsNull);
   exports["readObject"] = Function::New(env, ReadObject);
-  exports["writeObject"] = Function::New(env, WriteObject);
+  exports["_writeObject"] = Function::New(env, WriteObject);
   exports["readPointer"] = Function::New(env, ReadPointer);
   exports["_writePointer"] = Function::New(env, WritePointer);
   exports["readInt64"] = Function::New(env, ReadInt64);
@@ -685,8 +685,8 @@ Object Init(Env env, Object exports) {
   exports["readUInt64"] = Function::New(env, ReadUInt64);
   exports["writeUInt64"] = Function::New(env, WriteUInt64);
   exports["readCString"] = Function::New(env, ReadCString);
-  exports["reinterpret"] = Function::New(env, ReinterpretBuffer);
-  exports["reinterpretUntilZeros"] = Function::New(env, ReinterpretBufferUntilZeros);
+  exports["_reinterpret"] = Function::New(env, ReinterpretBuffer);
+  exports["_reinterpretUntilZeros"] = Function::New(env, ReinterpretBufferUntilZeros);
   return exports;
 }
 
