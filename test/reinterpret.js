@@ -52,8 +52,10 @@ describe('reinterpret()', function() {
     other = null;
     gc();
     setImmediate(() => {
-      assert(otherGCd, '"other" has not been garbage collected');
-      assert(origGCd, '"buf" has not been garbage collected');
+      setImmediate(() => {
+        assert(otherGCd, '"other" has not been garbage collected');
+        assert(origGCd, '"buf" has not been garbage collected');
+      });
     });
   });
 });

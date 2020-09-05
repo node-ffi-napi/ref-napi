@@ -2,7 +2,7 @@
   "name": "ref-napi",
   "description": "Turn Buffer instances into \"pointers\"",
   "engines": {
-    "node": ">= 6.0"
+    "node": ">= 10.0"
   },
   "keywords": [
     "native",

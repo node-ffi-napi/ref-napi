@@ -43,12 +43,14 @@ describe('pointer', function() {
     parent = null;
     gc();
     setImmediate(() => {
-      assert(parent_gc, '"parent" has not been garbage collected');
-      gc();
       setImmediate(() => {
+        assert(parent_gc, '"parent" has not been garbage collected');
+        gc();
         setImmediate(() => {
-          assert(child_gc, '"child" has not been garbage collected');
-          done();
+          setImmediate(() => {
+            assert(child_gc, '"child" has not been garbage collected');
+            done();
+          });
         });
       });
     });
