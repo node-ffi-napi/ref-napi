@@ -355,6 +355,18 @@ void WritePointer(const CallbackInfo& args) {
   if (input.IsNull()) {
     *reinterpret_cast<char**>(ptr) = nullptr;
   } else {
+    if ((args.Length() == 4) && (args[3].As<Boolean>() == true)) {
+      // create a node-api reference and finalizer to ensure that
+      // the buffer whoes pointer is written can only be
+      // collected after the finalizers for the buffer
+      // to which the pointer was written have already run
+      Reference<Value>* ref = new Reference<Value>;
+      *ref = Persistent(args[2]);
+      args[0].As<Object>().AddFinalizer([](Env env, Reference<Value>* ref) {
+        delete ref;
+      }, ref);
+    }
+
     char* input_ptr = GetBufferData(input);
     *reinterpret_cast<char**>(ptr) = input_ptr;
   }
