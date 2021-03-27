@@ -140,6 +140,17 @@ Generate the docs:
 $ npm run docs
 ```
 
+Incompatible packages
+--------------------
+
+The [`ref-struct-napi`](https://www.npmjs.com/package/ref-struct-napi) and
+[`ref-array-napi`](https://www.npmjs.com/package/ref-array-napi) packages
+have names that sound like they are compatible with this module. 
+
+They are not, and your application will experience crashes if you use
+them together with `ref-napi`. 
+Use [`ref-struct-di`](https://www.npmjs.com/package/ref-struct-di)
+or [`ref-array-di`](https://www.npmjs.com/package/ref-array-di) instead.
 
 License
 -------
