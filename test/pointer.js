@@ -14,7 +14,7 @@ describe('pointer', function() {
     const out = ref.readPointer(buf, 0, test.length);
     assert.strictEqual(out.length, test.length)
     for (let i = 0, l = out.length; i < l; i++) {
-      assert.strictEqual(out[i], test[i])
+      assert.strictEqual(out.get(i), test[i])
     }
     assert.strictEqual(ref.address(out), ref.address(test))
   });
