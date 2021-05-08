@@ -40,7 +40,6 @@ static const size_t kMaxLength = 0x3fffffff;
 class InstanceData final : public RefNapi::Instance {
  public:
   InstanceData(Env env) : env(env) {}
-
   Env env;
   FunctionReference pointer_ctor;
 
@@ -52,10 +51,10 @@ class InstanceData final : public RefNapi::Instance {
   }
 };
 
-class Pointer : public ObjectWrap<Pointer> {
+class PointerBuffer : public ObjectWrap<PointerBuffer> {
  public:
   static Object Init(Napi::Env env, Object exports);
-  Pointer(Napi::CallbackInfo& info);
+  PointerBuffer(Napi::CallbackInfo& info);
   Napi::Value IsNull(const Napi::CallbackInfo &info);
   Napi::Value Address(const Napi::CallbackInfo &info);
   Napi::Value Length(const Napi::CallbackInfo &info);
@@ -65,23 +64,23 @@ class Pointer : public ObjectWrap<Pointer> {
   int length_;
 };
 
-Object Pointer::Init(Napi::Env env, Object exports) {
+Object PointerBuffer::Init(Napi::Env env, Object exports) {
   Function func =
-      DefineClass(env, "Pointer",{
-           InstanceMethod("isNull", &Pointer::IsNull), 
-           InstanceMethod("get", &Pointer::Get), 
-           InstanceMethod("address", &Pointer::Address),
-           InstanceMethod("toString", &Pointer::ToString),
-           InstanceAccessor<&Pointer::Length>("length"),
+      DefineClass(env, "PointerBuffer",{
+           InstanceMethod("isNull", &PointerBuffer::IsNull),
+           InstanceMethod("get", &PointerBuffer::Get),
+           InstanceMethod("address", &PointerBuffer::Address),
+           InstanceMethod("toString", &PointerBuffer::ToString),
+           InstanceAccessor<&PointerBuffer::Length>("length"),
       });
 
-  exports.Set("Pointer", func);
+  exports.Set("PointerBuffer", func);
   InstanceData *data = InstanceData::Get(env);
   data->pointer_ctor = Persistent(func);
   return exports;
 }
 
-Pointer::Pointer(Napi::CallbackInfo& info) : Napi::ObjectWrap<Pointer>(info) {
+PointerBuffer::PointerBuffer(Napi::CallbackInfo& info) : Napi::ObjectWrap<PointerBuffer>(info) {
   Napi::Env env = info.Env();
   int length = info.Length();
   if (length <= 0 || !info[0].IsNumber()) {
@@ -93,24 +92,39 @@ Pointer::Pointer(Napi::CallbackInfo& info) : Napi::ObjectWrap<Pointer>(info) {
   length_ = (ptr_ == nullptr ? 0 : info[1].As<Number>().Int32Value());
 }
 
-Napi::Value Pointer::IsNull(const Napi::CallbackInfo &info) {
+Napi::Value PointerBuffer::IsNull(const Napi::CallbackInfo &info) {
   return Boolean::New(info.Env(), ptr_ == nullptr);
 }
 
-Napi::Value Pointer::Address(const Napi::CallbackInfo &info) {
+Napi::Value PointerBuffer::Address(const Napi::CallbackInfo &info) {
   return Number::New(info.Env(), reinterpret_cast<int64_t>(ptr_));
 }
 
-Napi::Value Pointer::Length(const Napi::CallbackInfo &info) {
+Napi::Value PointerBuffer::Length(const Napi::CallbackInfo &info) {
   return Number::New(info.Env(), length_);
 }
 
-Napi::Value Pointer::Get(const Napi::CallbackInfo &info) {
+Napi::Value PointerBuffer::Get(const Napi::CallbackInfo &info) {
   int32_t offset = info[0].As<Number>().Int32Value();
   return Number::New(info.Env(), ptr_[offset]);
 }
 
-Napi::Value Pointer::ToString(const Napi::CallbackInfo &info) {
+
+Napi::Value PointerBuffer::ToString(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  int length = info.Length();
+  if (length == 1 || info[0].IsString()) {
+     std::string encoding = info[0].As<String>();
+     if (encoding == "utf-8") {
+        return String::New(info.Env(), ptr_, length_);
+     } else if (encoding == "ucs2") {
+        return String::New(info.Env(), reinterpret_cast<char16_t*>(ptr_), length_ / 2);
+     } else {
+        Napi::TypeError::New(env, "Unknown encoding argument: " + encoding).ThrowAsJavaScriptException();
+        return Value();
+     }
+  }
+
   return String::New(info.Env(), ptr_, length_);
 }
 
@@ -126,7 +140,7 @@ Value WrapPointer(Env env, char* ptr, size_t length) {
 char* GetBufferData(Value val) {
 
   if (!val.IsBuffer() && val.IsObject()) {
-     auto p = Pointer::Unwrap(val.As<Object>());
+     auto p = PointerBuffer::Unwrap(val.As<Object>());
      return p->ptr_;
   }
 
@@ -144,8 +158,8 @@ char* InstanceData::GetBufferData(napi_value val) {
 
 char* AddressForArgs(const CallbackInfo& args, size_t offset_index = 1) {
   Value buf = args[0];
-  if (!buf.IsBuffer() && !buf.IsObject()) {
-    throw TypeError::New(args.Env(), "Buffer instance expected");
+  if (!(buf.IsBuffer() || buf.IsObject())) {
+    throw TypeError::New(args.Env(), "Buffer or PointerBuffer instance expected");
   }
 
   int64_t offset = args[offset_index].ToNumber();
@@ -203,6 +217,11 @@ Value HexAddress(const CallbackInfo& args) {
  */
 
 Value IsNull(const CallbackInfo& args) {
+  Value buf = args[0];
+  if (!(buf.IsBuffer() || buf.IsObject())) {
+    return Boolean::New(args.Env(), false);
+  }
+
   char* ptr = AddressForArgs(args);
   return Boolean::New(args.Env(), ptr == nullptr);
 }
@@ -300,18 +319,6 @@ void WritePointer(const CallbackInfo& args) {
   if (input.IsNull()) {
     *reinterpret_cast<char**>(ptr) = nullptr;
   } else {
-    if ((args.Length() == 4) && (args[3].As<Boolean>() == true)) {
-      // create a node-api reference and finalizer to ensure that
-      // the buffer whoes pointer is written can only be
-      // collected after the finalizers for the buffer
-      // to which the pointer was written have already run
-      Reference<Value>* ref = new Reference<Value>;
-      *ref = Persistent(args[2]);
-      args[0].As<Object>().AddFinalizer([](Env env, Reference<Value>* ref) {
-        delete ref;
-      }, ref);
-    }
-
     char* input_ptr = GetBufferData(input);
     *reinterpret_cast<char**>(ptr) = input_ptr;
   }
@@ -545,7 +552,7 @@ Object Init(Env env, Object exports) {
 
   exports["instance"] = External<RefNapi::Instance>::New(env, data);
 
-  Pointer::Init(env, exports);
+  PointerBuffer::Init(env, exports);
 
   // "sizeof" map
   Object smap = Object::New(env);
