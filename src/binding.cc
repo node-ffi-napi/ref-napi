@@ -226,6 +226,21 @@ Value IsNull(const CallbackInfo& args) {
   return Boolean::New(args.Env(), ptr == nullptr);
 }
 
+
+/**
+ * Returns "true" if we have addressable object (Buffer or PointerBuffer).
+ *
+ * args[0] - objectj - an object to check
+ */
+
+Value IsAddress(const CallbackInfo& args) {
+  Value buf = args[0];
+  if (!(buf.IsBuffer() || buf.IsObject())) {
+    return Boolean::New(args.Env(), false);
+  }
+  return Boolean::New(args.Env(), true);
+}
+
 /**
  * Retreives a JS Object instance that was previously stored in
  * the given Buffer instance at the given offset.
@@ -351,6 +366,27 @@ Value ReadInt64(const CallbackInfo& args) {
 }
 
 /**
+ * Reads a machine-endian int32_t from the given Buffer at the given offset.
+ *
+ * args[0] - Buffer - the "buf" Buffer instance to read from
+ * args[1] - Number - the offset from the "buf" buffer's address to read from
+ */
+
+Value ReadInt32(const CallbackInfo& args) {
+  Env env = args.Env();
+  char* ptr = AddressForArgs(args);
+
+  if (ptr == nullptr) {
+    throw TypeError::New(env, "readInt64: Cannot read from nullptr pointer");
+  }
+
+  int32_t val = *reinterpret_cast<int32_t*>(ptr);
+
+  return Number::New(env, val);
+}
+
+
+/**
  * Writes the input Number/String int64 value as a machine-endian int64_t to
  * the given Buffer at the given offset.
  *
@@ -391,6 +427,41 @@ void WriteInt64(const CallbackInfo& args) {
   }
 
   *reinterpret_cast<int64_t*>(ptr) = val;
+}
+
+
+void WriteInt32(const CallbackInfo& args) {
+  Env env = args.Env();
+  char* ptr = AddressForArgs(args);
+
+  Value in = args[2];
+  int32_t val;
+  if (in.IsNumber()) {
+    val = in.As<Number>();
+  } else if (in.IsString()) {
+    char* endptr;
+    char* str;
+    int base = 0;
+    std::string _str = in.As<String>();
+    str = &_str[0];
+
+    errno = 0;     /* To distinguish success/failure after call */
+    val = strtoll(str, &endptr, base);
+
+    if (endptr == str) {
+      throw TypeError::New(env, "writeInt32: no digits we found in input String");
+    } else  if (errno == ERANGE && (val == INT32_MAX || val == INT32_MIN)) {
+      throw TypeError::New(env, "writeInt32: input String numerical value out of range");
+    } else if (errno != 0 && val == 0) {
+      char errmsg[200];
+      snprintf(errmsg, sizeof(errmsg), "writeInt32: %s", strerror(errno));
+      throw TypeError::New(env, errmsg);
+    }
+  } else {
+    throw TypeError::New(env, "writeInt32: Number/String 32-bit value required");
+  }
+
+  *reinterpret_cast<int32_t*>(ptr) = val;
 }
 
 /**
@@ -624,6 +695,7 @@ Object Init(Env env, Object exports) {
   exports["address"] = Function::New(env, Address);
   exports["hexAddress"] = Function::New(env, HexAddress);
   exports["isNull"] = Function::New(env, IsNull);
+  exports["isAddress"] = Function::New(env, IsAddress);
   exports["readObject"] = Function::New(env, ReadObject);
   exports["_writeObject"] = Function::New(env, WriteObject);
   exports["readPointer"] = Function::New(env, ReadPointer);
@@ -632,6 +704,10 @@ Object Init(Env env, Object exports) {
   exports["writeInt64"] = Function::New(env, WriteInt64);
   exports["readUInt64"] = Function::New(env, ReadUInt64);
   exports["writeUInt64"] = Function::New(env, WriteUInt64);
+
+  exports["readInt32"] = Function::New(env, ReadInt32);
+  exports["writeInt32"] = Function::New(env, WriteInt32);
+
   exports["readCString"] = Function::New(env, ReadCString);
   exports["_reinterpret"] = Function::New(env, ReinterpretBuffer);
   exports["_reinterpretUntilZeros"] = Function::New(env, ReinterpretBufferUntilZeros);
