@@ -44,7 +44,7 @@
     "get-symbol-from-current-process-h": "^1.0.2",
     "highlight.js": "^10.0.0",
     "marked": "^1.0.0",
-    "mocha": "^7.1.1",
+    "mocha": "^8.4.0",
     "node-addon-api": "^3.0.0",
     "node-gyp-build": "^4.2.1",
     "nyc": "^15.0.0",
