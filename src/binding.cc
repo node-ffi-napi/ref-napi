@@ -121,7 +121,6 @@ Napi::Value PointerBuffer::ToString(const Napi::CallbackInfo &info) {
         return String::New(info.Env(), reinterpret_cast<char16_t*>(ptr_), length_ / 2);
      } else {
         Napi::TypeError::New(env, "Unknown encoding argument: " + encoding).ThrowAsJavaScriptException();
-        return Value();
      }
   }
 
@@ -435,7 +434,7 @@ void WriteInt32(const CallbackInfo& args) {
   char* ptr = AddressForArgs(args);
 
   Value in = args[2];
-  int32_t val;
+  int64_t val;
   if (in.IsNumber()) {
     val = in.As<Number>();
   } else if (in.IsString()) {
@@ -450,7 +449,7 @@ void WriteInt32(const CallbackInfo& args) {
 
     if (endptr == str) {
       throw TypeError::New(env, "writeInt32: no digits we found in input String");
-    } else  if (errno == ERANGE && (val == INT32_MAX || val == INT32_MIN)) {
+    } else if (errno == ERANGE && (val == INT32_MAX || val == INT32_MIN)) {
       throw TypeError::New(env, "writeInt32: input String numerical value out of range");
     } else if (errno != 0 && val == 0) {
       char errmsg[200];
@@ -461,7 +460,11 @@ void WriteInt32(const CallbackInfo& args) {
     throw TypeError::New(env, "writeInt32: Number/String 32-bit value required");
   }
 
-  *reinterpret_cast<int32_t*>(ptr) = val;
+  if (val < INT32_MIN || val > INT32_MAX) {
+      throw TypeError::New(env, "writeInt32: value out of range");
+  }
+
+  *reinterpret_cast<int32_t*>(ptr) = (int32_t)val;
 }
 
 /**
