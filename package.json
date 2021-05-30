@@ -21,7 +21,7 @@
     "64",
     "napi"
   ],
-  "version": "3.0.2",
+  "version": "3.0.3",
   "license": "MIT",
   "author": "Anna Henningsen <anna@addaleax.net>",
   "repository": {
