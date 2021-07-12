@@ -146,7 +146,7 @@ function markdown (code) {
  */
 
 function highlight (code, lang) {
-  if (!hljs.LANGUAGES.hasOwnProperty(lang)) {
+  if (hljs.listLanguages().indexOf(lang) === -1) {
     lang = 'javascript'
   }
   return hljs.highlight(lang, code).value
