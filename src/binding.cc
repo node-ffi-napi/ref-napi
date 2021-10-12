@@ -19,49 +19,9 @@
   #include <inttypes.h>
 #endif
 
-
 using namespace Napi;
 
 namespace {
-
-#if !defined(NAPI_VERSION) || NAPI_VERSION < 6
-napi_status napix_set_instance_data(
-    napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint) {
-  typedef napi_status (*napi_set_instance_data_fn)(
-      napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint);
-  static const napi_set_instance_data_fn napi_set_instance_data__ =
-      (napi_set_instance_data_fn)
-          get_symbol_from_current_process("napi_set_instance_data");
-
-  if (napi_set_instance_data__ == nullptr)
-    return napi_generic_failure;
-  return napi_set_instance_data__(env, data, finalize_cb, finalize_hint);
-}
-
-napi_status napix_get_instance_data(
-    napi_env env, void** data) {
-  typedef napi_status (*napi_get_instance_data_fn)(
-      napi_env env, void** data);
-  static const napi_get_instance_data_fn napi_get_instance_data__ =
-      (napi_get_instance_data_fn)
-          get_symbol_from_current_process("napi_get_instance_data");
-
-  *data = nullptr;
-  if (napi_get_instance_data__ == nullptr)
-    return napi_generic_failure;
-  return napi_get_instance_data__(env, data);
-}
-#else // NAPI_VERSION >= 6
-napi_status napix_set_instance_data(
-    napi_env env, void* data, napi_finalize finalize_cb, void* finalize_hint) {
-  return napi_set_instance_data(env, data, finalize_cb, finalize_hint);
-}
-
-napi_status napix_get_instance_data(
-    napi_env env, void** data) {
-  return napi_get_instance_data(env, data);
-}
-#endif
 
 // used by the Int64 functions to determine whether to return a Number
 // or String based on whether or not a Number will lose precision.
@@ -73,10 +33,6 @@ napi_status napix_get_instance_data(
 // we could use `node::Buffer::kMaxLength`, but it's not defined on node v0.6.x
 static const size_t kMaxLength = 0x3fffffff;
 
-enum ArrayBufferMode {
-  AB_CREATED_BY_REF,
-  AB_PASSED_TO_REF
-};
 
 // Since Node.js v14.0.0, we have to keep a global list of all ArrayBuffer
 // instances that we work with, in order not to create any duplicates.
@@ -84,108 +40,110 @@ enum ArrayBufferMode {
 class InstanceData final : public RefNapi::Instance {
  public:
   InstanceData(Env env) : env(env) {}
-
-  struct ArrayBufferEntry {
-    Reference<ArrayBuffer> ab;
-    size_t finalizer_count;
-  };
-
   Env env;
-  std::unordered_map<char*, ArrayBufferEntry> pointer_to_orig_buffer;
-  FunctionReference buffer_from;
-
-  void RegisterArrayBuffer(napi_value val) override {
-    ArrayBuffer buf(env, val);
-    RegisterArrayBuffer(buf, AB_PASSED_TO_REF);
-  }
-
-  inline void RegisterArrayBuffer(ArrayBuffer buf, ArrayBufferMode mode) {
-    char* ptr = static_cast<char*>(buf.Data());
-    if (ptr == nullptr) return;
-
-    auto it = pointer_to_orig_buffer.find(ptr);
-    if (it != pointer_to_orig_buffer.end()) {
-      if (!it->second.ab.Value().IsEmpty()) {
-        // Already have a valid entry, nothing to do.
-        return;
-      }
-      it->second.ab.Reset(buf, 0);
-      it->second.finalizer_count++;
-    } else {
-      pointer_to_orig_buffer.emplace(ptr, ArrayBufferEntry {
-        Reference<ArrayBuffer>::New(buf, 0),
-        1
-      });
-    }
-
-    // If AB_CREATED_BY_REF, then another finalizer has been added before this
-    // as a "real" backing store finalizer.
-    if (mode != AB_CREATED_BY_REF) {
-      buf.AddFinalizer([this](Env env, char* ptr) {
-        UnregisterArrayBuffer(ptr);
-      }, ptr);
-    }
-  }
-
-  inline void UnregisterArrayBuffer(char* ptr) {
-    auto it = pointer_to_orig_buffer.find(ptr);
-    if (--it->second.finalizer_count == 0)
-      pointer_to_orig_buffer.erase(it);
-  }
-
-  inline ArrayBuffer LookupOrCreateArrayBuffer(char* ptr, size_t length) {
-    assert(ptr != nullptr);
-    ArrayBuffer ab;
-    auto it = pointer_to_orig_buffer.find(ptr);
-    if (it != pointer_to_orig_buffer.end())
-      ab = it->second.ab.Value();
-
-    if (ab.IsEmpty()) {
-      length = std::max<size_t>(length, kMaxLength);
-      ab = Buffer<char>::New(env, ptr, length, [this](Env env, char* ptr) {
-        UnregisterArrayBuffer(ptr);
-      }).ArrayBuffer();
-      RegisterArrayBuffer(ab, AB_CREATED_BY_REF);
-    }
-    return ab;
-  }
+  FunctionReference pointer_ctor;
 
   napi_value WrapPointer(char* ptr, size_t length) override;
   char* GetBufferData(napi_value val) override;
 
   static InstanceData* Get(Env env) {
-    void* d = nullptr;
-    if (napix_get_instance_data(env, &d) == napi_ok)
-      return static_cast<InstanceData*>(d);
-    return nullptr;
+    return env.GetInstanceData<InstanceData>();
   }
 };
+
+class PointerBuffer : public ObjectWrap<PointerBuffer> {
+ public:
+  static Object Init(Napi::Env env, Object exports);
+  PointerBuffer(Napi::CallbackInfo& info);
+  Napi::Value IsNull(const Napi::CallbackInfo &info);
+  Napi::Value Address(const Napi::CallbackInfo &info);
+  Napi::Value Length(const Napi::CallbackInfo &info);
+  Napi::Value Get(const Napi::CallbackInfo &info);
+  Napi::Value ToString(const Napi::CallbackInfo &info);
+  char *ptr_;
+  int length_;
+};
+
+Object PointerBuffer::Init(Napi::Env env, Object exports) {
+  Function func =
+      DefineClass(env, "PointerBuffer",{
+           InstanceMethod("isNull", &PointerBuffer::IsNull),
+           InstanceMethod("get", &PointerBuffer::Get),
+           InstanceMethod("address", &PointerBuffer::Address),
+           InstanceMethod("toString", &PointerBuffer::ToString),
+           InstanceAccessor<&PointerBuffer::Length>("length"),
+      });
+
+  exports.Set("PointerBuffer", func);
+  InstanceData *data = InstanceData::Get(env);
+  data->pointer_ctor = Persistent(func);
+  return exports;
+}
+
+PointerBuffer::PointerBuffer(Napi::CallbackInfo& info) : Napi::ObjectWrap<PointerBuffer>(info) {
+  Napi::Env env = info.Env();
+  int length = info.Length();
+  if (length <= 0 || !info[0].IsNumber()) {
+    Napi::TypeError::New(env, "Number expected").ThrowAsJavaScriptException();
+    return;
+  }
+  Napi::Number value = info[0].As<Napi::Number>();
+  ptr_ = reinterpret_cast<char *>(value.Int64Value());
+  length_ = (ptr_ == nullptr ? 0 : info[1].As<Number>().Int32Value());
+}
+
+Napi::Value PointerBuffer::IsNull(const Napi::CallbackInfo &info) {
+  return Boolean::New(info.Env(), ptr_ == nullptr);
+}
+
+Napi::Value PointerBuffer::Address(const Napi::CallbackInfo &info) {
+  return Number::New(info.Env(), reinterpret_cast<int64_t>(ptr_));
+}
+
+Napi::Value PointerBuffer::Length(const Napi::CallbackInfo &info) {
+  return Number::New(info.Env(), length_);
+}
+
+Napi::Value PointerBuffer::Get(const Napi::CallbackInfo &info) {
+  int32_t offset = info[0].As<Number>().Int32Value();
+  return Number::New(info.Env(), ptr_[offset]);
+}
+
+
+Napi::Value PointerBuffer::ToString(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  int length = info.Length();
+  if (length == 1 || info[0].IsString()) {
+     std::string encoding = info[0].As<String>();
+     if (encoding == "utf-8") {
+        return String::New(info.Env(), ptr_, length_);
+     } else if (encoding == "ucs2") {
+        return String::New(info.Env(), reinterpret_cast<char16_t*>(ptr_), length_ / 2);
+     } else {
+        Napi::TypeError::New(env, "Unknown encoding argument: " + encoding).ThrowAsJavaScriptException();
+     }
+  }
+
+  return String::New(info.Env(), ptr_, length_);
+}
 
 /**
  * Converts an arbitrary pointer to a node Buffer with specified length
  */
 
 Value WrapPointer(Env env, char* ptr, size_t length) {
-  if (ptr == nullptr)
-    length = 0;
-
-  InstanceData* data;
-  if (ptr != nullptr && (data = InstanceData::Get(env)) != nullptr) {
-    ArrayBuffer ab = data->LookupOrCreateArrayBuffer(ptr, length);
-    assert(!ab.IsEmpty());
-    return data->buffer_from.Call({
-      ab, Number::New(env, 0), Number::New(env, length)
-    });
-  }
-
-  return Buffer<char>::New(env, ptr, length, [](Env,char*){});
+  InstanceData* data = InstanceData::Get(env);
+  return data->pointer_ctor.New({Number::New(env, reinterpret_cast<int64_t>(ptr)), Number::New(env, length)});
 }
 
 char* GetBufferData(Value val) {
+
+  if (!val.IsBuffer() && val.IsObject()) {
+     auto p = PointerBuffer::Unwrap(val.As<Object>());
+     return p->ptr_;
+  }
+
   Buffer<char> buf = val.As<Buffer<char>>();
-  InstanceData* data = InstanceData::Get(val.Env());
-  if (data != nullptr)
-    data->RegisterArrayBuffer(buf.ArrayBuffer());
   return buf.Data();
 }
 
@@ -199,8 +157,8 @@ char* InstanceData::GetBufferData(napi_value val) {
 
 char* AddressForArgs(const CallbackInfo& args, size_t offset_index = 1) {
   Value buf = args[0];
-  if (!buf.IsBuffer()) {
-    throw TypeError::New(args.Env(), "Buffer instance expected");
+  if (!(buf.IsBuffer() || buf.IsObject())) {
+    throw TypeError::New(args.Env(), "Buffer or PointerBuffer instance expected");
   }
 
   int64_t offset = args[offset_index].ToNumber();
@@ -258,8 +216,28 @@ Value HexAddress(const CallbackInfo& args) {
  */
 
 Value IsNull(const CallbackInfo& args) {
+  Value buf = args[0];
+  if (!(buf.IsBuffer() || buf.IsObject())) {
+    return Boolean::New(args.Env(), false);
+  }
+
   char* ptr = AddressForArgs(args);
   return Boolean::New(args.Env(), ptr == nullptr);
+}
+
+
+/**
+ * Returns "true" if we have addressable object (Buffer or PointerBuffer).
+ *
+ * args[0] - objectj - an object to check
+ */
+
+Value IsAddress(const CallbackInfo& args) {
+  Value buf = args[0];
+  if (!(buf.IsBuffer() || buf.IsObject())) {
+    return Boolean::New(args.Env(), false);
+  }
+  return Boolean::New(args.Env(), true);
 }
 
 /**
@@ -348,25 +326,13 @@ void WritePointer(const CallbackInfo& args) {
   char* ptr = AddressForArgs(args);
   Value input = args[2];
 
-  if (!input.IsNull() && !input.IsBuffer()) {
+  if (!input.IsNull() && !input.IsBuffer() && !input.IsObject()) {
     throw TypeError::New(env, "writePointer: Buffer instance expected as third argument");
   }
 
   if (input.IsNull()) {
     *reinterpret_cast<char**>(ptr) = nullptr;
   } else {
-    if ((args.Length() == 4) && (args[3].As<Boolean>() == true)) {
-      // create a node-api reference and finalizer to ensure that
-      // the buffer whoes pointer is written can only be
-      // collected after the finalizers for the buffer
-      // to which the pointer was written have already run
-      Reference<Value>* ref = new Reference<Value>;
-      *ref = Persistent(args[2]);
-      args[0].As<Object>().AddFinalizer([](Env env, Reference<Value>* ref) {
-        delete ref;
-      }, ref);
-    }
-
     char* input_ptr = GetBufferData(input);
     *reinterpret_cast<char**>(ptr) = input_ptr;
   }
@@ -397,6 +363,27 @@ Value ReadInt64(const CallbackInfo& args) {
     return Number::New(env, val);
   }
 }
+
+/**
+ * Reads a machine-endian int32_t from the given Buffer at the given offset.
+ *
+ * args[0] - Buffer - the "buf" Buffer instance to read from
+ * args[1] - Number - the offset from the "buf" buffer's address to read from
+ */
+
+Value ReadInt32(const CallbackInfo& args) {
+  Env env = args.Env();
+  char* ptr = AddressForArgs(args);
+
+  if (ptr == nullptr) {
+    throw TypeError::New(env, "readInt64: Cannot read from nullptr pointer");
+  }
+
+  int32_t val = *reinterpret_cast<int32_t*>(ptr);
+
+  return Number::New(env, val);
+}
+
 
 /**
  * Writes the input Number/String int64 value as a machine-endian int64_t to
@@ -439,6 +426,45 @@ void WriteInt64(const CallbackInfo& args) {
   }
 
   *reinterpret_cast<int64_t*>(ptr) = val;
+}
+
+
+void WriteInt32(const CallbackInfo& args) {
+  Env env = args.Env();
+  char* ptr = AddressForArgs(args);
+
+  Value in = args[2];
+  int64_t val;
+  if (in.IsNumber()) {
+    val = in.As<Number>();
+  } else if (in.IsString()) {
+    char* endptr;
+    char* str;
+    int base = 0;
+    std::string _str = in.As<String>();
+    str = &_str[0];
+
+    errno = 0;     /* To distinguish success/failure after call */
+    val = strtoll(str, &endptr, base);
+
+    if (endptr == str) {
+      throw TypeError::New(env, "writeInt32: no digits we found in input String");
+    } else if (errno == ERANGE && (val == INT32_MAX || val == INT32_MIN)) {
+      throw TypeError::New(env, "writeInt32: input String numerical value out of range");
+    } else if (errno != 0 && val == 0) {
+      char errmsg[200];
+      snprintf(errmsg, sizeof(errmsg), "writeInt32: %s", strerror(errno));
+      throw TypeError::New(env, errmsg);
+    }
+  } else {
+    throw TypeError::New(env, "writeInt32: Number/String 32-bit value required");
+  }
+
+  if (val < INT32_MIN || val > INT32_MAX) {
+      throw TypeError::New(env, "writeInt32: value out of range");
+  }
+
+  *reinterpret_cast<int32_t*>(ptr) = (int32_t)val;
 }
 
 /**
@@ -594,29 +620,17 @@ Value ReinterpretBufferUntilZeros(const CallbackInfo& args) {
 
 } // anonymous namespace
 
+template <typename T> void DefaultFini(Env, T* data) {
+  delete data;
+}
+
 Object Init(Env env, Object exports) {
   InstanceData* data = new InstanceData(env);
-  {
-    Value buffer_ctor = env.Global()["Buffer"];
-    Value buffer_from = buffer_ctor.As<Object>()["from"];
-    data->buffer_from.Reset(buffer_from.As<Function>(), 1);
-    assert(!data->buffer_from.IsEmpty());
-    napi_status status = napix_set_instance_data(
-        env, data, [](napi_env env, void* data, void* hint) {
-          delete static_cast<InstanceData*>(data);
-        }, nullptr);
-    if (status != napi_ok) {
-      delete data;
-      data = nullptr;
-    } else {
-      // Hack around the fact that we can't reset buffer_from from the
-      // InstanceData dtor.
-      buffer_from.As<Object>().AddFinalizer([](Env env, InstanceData* data) {
-        data->buffer_from.Reset();
-      }, data);
-    }
-  }
+  env.SetInstanceData<InstanceData, DefaultFini>(data);
+
   exports["instance"] = External<RefNapi::Instance>::New(env, data);
+
+  PointerBuffer::Init(env, exports);
 
   // "sizeof" map
   Object smap = Object::New(env);
@@ -688,6 +702,7 @@ Object Init(Env env, Object exports) {
   exports["address"] = Function::New(env, Address);
   exports["hexAddress"] = Function::New(env, HexAddress);
   exports["isNull"] = Function::New(env, IsNull);
+  exports["isAddress"] = Function::New(env, IsAddress);
   exports["readObject"] = Function::New(env, ReadObject);
   exports["_writeObject"] = Function::New(env, WriteObject);
   exports["readPointer"] = Function::New(env, ReadPointer);
@@ -696,6 +711,10 @@ Object Init(Env env, Object exports) {
   exports["writeInt64"] = Function::New(env, WriteInt64);
   exports["readUInt64"] = Function::New(env, ReadUInt64);
   exports["writeUInt64"] = Function::New(env, WriteUInt64);
+
+  exports["readInt32"] = Function::New(env, ReadInt32);
+  exports["writeInt32"] = Function::New(env, WriteInt32);
+
   exports["readCString"] = Function::New(env, ReadCString);
   exports["_reinterpret"] = Function::New(env, ReinterpretBuffer);
   exports["_reinterpretUntilZeros"] = Function::New(env, ReinterpretBufferUntilZeros);

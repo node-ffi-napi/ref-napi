@@ -41,9 +41,20 @@ describe('address', function() {
     assert.strictEqual(ref.address(buf), ref.address(buf, 0));
   });
 
+  it('should confirm Buffer and Pointer buffer as an address', function() {
+    const buf = Buffer.alloc(10);
+    assert(ref.isAddress(buf));
+
+    assert(ref.isAddress(ref.NULL));
+
+    assert(!ref.isAddress("hello"));
+  });
+
   describe('inspect()', function() {
     it('should overwrite the default Buffer#inspect() to print the memory address', function() {
       assert(inspect(buf).includes(buf.hexAddress()));
     });
   });
+
+
 });

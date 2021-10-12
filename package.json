@@ -21,7 +21,7 @@
     "64",
     "napi"
   ],
-  "version": "3.0.3",
+  "version": "4.0.0",
   "license": "MIT",
   "author": "Anna Henningsen <anna@addaleax.net>",
   "repository": {
@@ -37,20 +37,20 @@
     "prepack": "prebuildify-ci download && ([ $(ls prebuilds | wc -l) = '5' ] || (echo 'Some prebuilds are missing'; exit 1))"
   },
   "dependencies": {
-    "debug": "^4.1.1",
+    "debug": "^4.3.1",
     "get-symbol-from-current-process-h": "^1.0.2",
-    "node-addon-api": "^3.0.0",
+    "node-addon-api": "^4.2.0",
     "node-gyp-build": "^4.2.1"
   },
   "devDependencies": {
     "dox": "0.9.0",
     "highlight.js": "^10.0.0",
-    "jade": "^1.11.0",
     "marked": "^1.0.0",
-    "mocha": "^7.1.1",
+    "mocha": "^8.4.0",
     "nyc": "^15.0.0",
-    "prebuildify": "^3.0.4",
+    "prebuildify": "^4.1.2",
     "prebuildify-ci": "^1.0.5",
+    "pug": "^3.0.2",
     "weak-napi": "^2.0.0"
   }
 }
