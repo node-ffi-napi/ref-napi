@@ -620,9 +620,13 @@ Value ReinterpretBufferUntilZeros(const CallbackInfo& args) {
 
 } // anonymous namespace
 
+template <typename T> void DefaultFini(Env, T* data) {
+  delete data;
+}
+
 Object Init(Env env, Object exports) {
   InstanceData* data = new InstanceData(env);
-  env.SetInstanceData<InstanceData>(data);
+  env.SetInstanceData<InstanceData, DefaultFini>(data);
 
   exports["instance"] = External<RefNapi::Instance>::New(env, data);
 
