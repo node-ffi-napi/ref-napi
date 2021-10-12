@@ -44,12 +44,9 @@
   },
   "devDependencies": {
     "dox": "0.9.0",
-    "get-symbol-from-current-process-h": "^1.0.2",
     "highlight.js": "^10.0.0",
     "marked": "^1.0.0",
     "mocha": "^8.4.0",
-    "node-addon-api": "^4.2.0",
-    "node-gyp-build": "^4.2.1",
     "nyc": "^15.0.0",
     "prebuildify": "^4.1.2",
     "prebuildify-ci": "^1.0.5",
