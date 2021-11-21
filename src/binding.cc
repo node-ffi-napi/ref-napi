@@ -334,6 +334,45 @@ Value ReadPointer(const CallbackInfo& args) {
 }
 
 /**
+ * Creates an ArrayBuffer from the given address without allocating new memory,
+ * using napi_create_external_arraybuffer.
+ *
+ * args[0] - Number/String - the memory address
+ * args[1] - Number - the length in bytes of the returned ArrayBuffer instance
+ */
+
+Value ReadExternalArrayBuffer(const CallbackInfo& args) {
+  Env env = args.Env();
+  Value in = args[0];
+  int64_t address;
+  if (in.IsNumber()) {
+    address = in.As<Number>();
+  } else if (in.IsString()) {
+    char* endptr;
+    char* str;
+    int base = 0;
+    std::string _str = in.As<String>();
+    str = &_str[0];
+
+    errno = 0;     /* To distinguish success/failure after call */
+    address = strtoll(str, &endptr, base);
+
+    if (endptr == str) {
+      throw TypeError::New(env, "readExternalArrayBuffer: no digits we found in input String");
+    } else  if (errno == ERANGE && (address == INT64_MAX || address == INT64_MIN)) {
+      throw TypeError::New(env, "readExternalArrayBuffer: input String numerical value out of range");
+    } else if (errno != 0 && address == 0) {
+      char errmsg[200];
+      snprintf(errmsg, sizeof(errmsg), "readExternalArrayBuffer: %s", strerror(errno));
+      throw TypeError::New(env, errmsg);
+    }
+  }
+  int64_t length = args[1].ToNumber();
+
+  return ArrayBuffer::New(env, (void*) address, (size_t) length);
+}
+
+/**
  * Writes the memory address of the "input" buffer (and optional offset) to the
  * specified "buf" buffer and offset. Essentially making "buf" hold a reference
  * to the "input" Buffer.
@@ -699,6 +738,7 @@ Object Init(Env env, Object exports) {
   exports["readCString"] = Function::New(env, ReadCString);
   exports["_reinterpret"] = Function::New(env, ReinterpretBuffer);
   exports["_reinterpretUntilZeros"] = Function::New(env, ReinterpretBufferUntilZeros);
+  exports["readExternalArrayBuffer"] = Function::New(env, ReadExternalArrayBuffer);
   return exports;
 }
 
