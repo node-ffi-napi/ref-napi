@@ -1,8 +1,8 @@
 {
-  "name": "ref-napi",
-  "description": "Turn Buffer instances into \"pointers\"",
+  "name": "ref-napi-ex",
+  "description": "Fork of node-ffi-napi/ref-napi with external ArrayBuffer support",
   "engines": {
-    "node": ">= 10.0"
+    "node": ">= 12.0"
   },
   "keywords": [
     "native",
@@ -21,12 +21,12 @@
     "64",
     "napi"
   ],
-  "version": "3.0.3",
+  "version": "3.0.4",
   "license": "MIT",
-  "author": "Anna Henningsen <anna@addaleax.net>",
+  "author": "Luxel Tao (https://github.com/luxel)",
   "repository": {
     "type": "git",
-    "url": "git://github.com/node-ffi-napi/ref-napi.git"
+    "url": "git://github.com/luxel/ref-napi.git"
   },
   "main": "./lib/ref.js",
   "scripts": {
@@ -34,6 +34,7 @@
     "test": "nyc mocha --expose-gc",
     "install": "node-gyp-build",
     "prebuild": "prebuildify --napi --tag-armv",
+    "prebuild-node14": "prebuildify --napi --tag-armv --target 14.17.6",
     "prepack": "prebuildify-ci download && ([ $(ls prebuilds | wc -l) = '5' ] || (echo 'Some prebuilds are missing'; exit 1))"
   },
   "dependencies": {

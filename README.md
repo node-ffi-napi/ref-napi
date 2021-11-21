@@ -1,20 +1,22 @@
-ref-napi
+ref-napi-ex
 ========
 ### Turn Buffer instances into "pointers"
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/node-ffi-napi/ref-napi.svg)](https://greenkeeper.io/)
+[![Greenkeeper badge](https://badges.greenkeeper.io/luxel/ref-napi.svg)](https://greenkeeper.io/)
 
-[![NPM Version](https://img.shields.io/npm/v/ref-napi.svg?style=flat)](https://npmjs.org/package/ref-napi)
-[![NPM Downloads](https://img.shields.io/npm/dm/ref-napi.svg?style=flat)](https://npmjs.org/package/ref-napi)
-[![Build Status](https://travis-ci.org/node-ffi-napi/ref-napi.svg?style=flat&branch=latest)](https://travis-ci.org/node-ffi-napi/ref-napi?branch=latest)
-[![Coverage Status](https://coveralls.io/repos/node-ffi-napi/ref-napi/badge.svg?branch=latest)](https://coveralls.io/r/node-ffi-napi/ref-napi?branch=latest)
-[![Dependency Status](https://david-dm.org/node-ffi-napi/ref-napi.svg?style=flat)](https://david-dm.org/node-ffi-napi/ref-napi)
+[![NPM Version](https://img.shields.io/npm/v/ref-napi-ex.svg?style=flat)](https://npmjs.org/package/ref-napi-ex)
+[![NPM Downloads](https://img.shields.io/npm/dm/ref-napi-ex.svg?style=flat)](https://npmjs.org/package/ref-napi-ex)
+[![Build Status](https://travis-ci.org/luxel/ref-napi.svg?style=flat&branch=latest)](https://travis-ci.org/luxel/ref-napi?branch=latest)
+[![Coverage Status](https://coveralls.io/repos/luxel/ref-napi/badge.svg?branch=latest)](https://coveralls.io/r/luxel/ref-napi?branch=latest)
+[![Dependency Status](https://david-dm.org/luxel/ref-napi.svg?style=flat)](https://david-dm.org/luxel/ref-napi)
 
 This module is inspired by the old `Pointer` class from node-ffi, but with the
 intent of using Node's fast `Buffer` instances instead of a slow C++ `Pointer`
 class. These two concepts were previously very similar, but now this module
 brings over the functionality that Pointers had and Buffers are missing, so
 now Buffers are a lot more powerful.
+
+ref-napi-ex is a fork from [ref-napi](https://github.com/luxel/ref-napi) (Thanks you Anna Henningsen for bringing us the excellent repo!). On top of ref-napi, an API `ref.readExternalArrayBuffer` is added which can create "External" `ArrayBuffer` from any given memory address.
 
 ### Features:
 
@@ -25,7 +27,7 @@ now Buffers are a lot more powerful.
  * A "type" convention, so that you can specify a buffer as an `int *`,
    and reference/dereference at will.
  * Offers a buffer instance representing the `NULL` pointer
-
+ * Creates an "External" `ArrayBuffer` instance from given memory address and size, without creating new memory buffer. (Behind the scene, it uses `napi_create_external_arraybuffer`).
 
 Installation
 ------------
@@ -33,7 +35,7 @@ Installation
 Install with `npm`:
 
 ``` bash
-$ npm install ref-napi
+$ npm install ref-napi-ex
 ```
 
 
@@ -43,7 +45,7 @@ Examples
 #### referencing and derefencing
 
 ``` js
-var ref = require('ref-napi')
+var ref = require('ref-napi-ex')
 
 // so we can all agree that a buffer with the int value written
 // to it could be represented as an "int *"
