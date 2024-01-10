@@ -684,7 +684,7 @@ Object Init(Env env, Object exports) {
   // exports
   exports["sizeof"] = smap;
   exports["alignof"] = amap;
-  exports["nullptr"] = exports["NULL"] = WrapPointer(env, nullptr, 0);
+  exports["NULL"] = Buffer<int>::New(env, 0);
   exports["address"] = Function::New(env, Address);
   exports["hexAddress"] = Function::New(env, HexAddress);
   exports["isNull"] = Function::New(env, IsNull);
