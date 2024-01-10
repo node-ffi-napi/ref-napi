@@ -167,7 +167,7 @@ class InstanceData final : public RefNapi::Instance {
 
 Value WrapPointer(Env env, char* ptr, size_t length) {
   if (ptr == nullptr)
-    length = 0;
+    return Buffer<char>::New(env, 0);
 
   InstanceData* data;
   if (ptr != nullptr && (data = InstanceData::Get(env)) != nullptr) {
